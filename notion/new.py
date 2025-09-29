@@ -90,13 +90,26 @@ def _collect_all_blocks(block_id: str, page_size: int = 100) -> Dict[str, Any]:
 
 
 # ---------------- USER TOOLS ----------------
+# The imports, config, and helper functions remain the same as the top of your code.
+# ... (Lines 1-143 remain the same) ...
+
+
+# ---------------- USER TOOLS ----------------
 @mcp.tool()
 def NOTION_GET_ABOUT_ME():
+    """
+    Retrieves the user object for the authenticated Notion integration token.
+    This provides basic user information and the token's identity.
+    """
     return safe_execute(lambda **kw: notion.users.me(**kw))
 
 
 @mcp.tool()
 def NOTION_LIST_USERS(page_size: int = 30, start_cursor: Optional[str] = None):
+    """
+    Lists all users in the workspace (human users and bot integrations).
+    Supports pagination via start_cursor and limits via page_size.
+    """
     kwargs = {"page_size": page_size}
     if start_cursor:
         kwargs["start_cursor"] = start_cursor
@@ -109,6 +122,9 @@ def NOTION_LIST_USERS(page_size: int = 30, start_cursor: Optional[str] = None):
 
 @mcp.tool()
 def NOTION_GET_ABOUT_USER(user_id: str):
+    """
+    Retrieves detailed information for a specific user ID (including their name and type).
+    """
     if not validate_notion_id(user_id):
         return {"successful": False, "data": {}, "error": "Invalid user ID format"}
     return safe_execute(lambda **kw: notion.users.retrieve(**kw), user_id=user_id)
@@ -117,6 +133,10 @@ def NOTION_GET_ABOUT_USER(user_id: str):
 # ---------------- PAGE / DUPLICATE / UPDATE TOOLS ----------------
 @mcp.tool()
 def NOTION_CREATE_NOTION_PAGE(parent_id: str, title: str, cover: Optional[str] = None, icon: Optional[str] = None):
+    """
+    Creates a new page under a specified parent (page ID or database ID).
+    Optionally sets a cover URL and an emoji icon.
+    """
     if not validate_notion_id(parent_id):
         return {"successful": False, "data": {}, "error": "Invalid parent ID format"}
     kwargs = {
@@ -132,57 +152,16 @@ def NOTION_CREATE_NOTION_PAGE(parent_id: str, title: str, cover: Optional[str] =
 
 @mcp.tool()
 def NOTION_DUPLICATE_PAGE(page_id: str, parent_id: str, title: Optional[str] = None, include_blocks: bool = True):
+    """
+    Duplicates an existing page and its content (blocks) to a new parent location.
+    The new page gets a 'Copy of [Original Title]' unless a new title is provided.
+    """
     if not validate_notion_id(page_id) or not validate_notion_id(parent_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id or parent_id format"}
 
-    # fetch original page metadata
-    orig_res = safe_execute(lambda **kw: notion.pages.retrieve(**kw), page_id=page_id)
-    if not orig_res["successful"]:
-        return orig_res
-    original = orig_res["data"]
-
-    # extract a reasonable title
-    orig_title = "Untitled"
-    try:
-        t_prop = original.get("properties", {})
-        # find any title property key whose value contains 'title'
-        for k, v in t_prop.items():
-            if isinstance(v, dict) and "title" in v:
-                title_parts = v.get("title", [])
-                orig_title = "".join([p.get("plain_text", "") for p in title_parts]) or orig_title
-                break
-    except Exception:
-        pass
-
-    new_title = title or f"Copy of {orig_title}"
-
-    # prepare properties copy - deep copy safe; but remove system-only fields if present
-    new_properties = original.get("properties", {}).copy()
-    # Ensure title property updated
-    # find the title property key to overwrite (first property whose value has 'title')
-    title_key = None
-    for k, v in new_properties.items():
-        if isinstance(v, dict) and "title" in v:
-            title_key = k
-            break
-    if title_key:
-        new_properties[title_key] = {"title": [{"text": {"content": new_title}}]}
-    else:
-        # If no title property exists (edge), add a 'Name' title property
-        new_properties["Name"] = {"title": [{"text": {"content": new_title}}]}
-
-    create_payload = {"parent": {"page_id": parent_id}, "properties": new_properties}
-    if original.get("cover"):
-        create_payload["cover"] = original["cover"]
-    if original.get("icon"):
-        create_payload["icon"] = original["icon"]
-
-    new_page_res = safe_execute(lambda **kw: notion.pages.create(**kw), **create_payload)
-    if not new_page_res["successful"]:
-        return new_page_res
-
-    new_page_id = new_page_res["data"]["id"]
-
+    # ... (function body remains the same) ...
+    # Removed for brevity, but you replace the whole function block.
+    # ...
     # copy blocks optionally (recursive shallow copy)
     if include_blocks:
         blocks_collected = _collect_all_blocks(page_id := page_id)
@@ -203,9 +182,15 @@ def NOTION_DUPLICATE_PAGE(page_id: str, parent_id: str, title: Optional[str] = N
 
 @mcp.tool()
 def NOTION_UPDATE_PAGE(page_id: str, title: Optional[str] = None, archived: Optional[bool] = None,
-                       cover_url: Optional[str] = None, icon_emoji: Optional[str] = None, properties: Optional[Dict[str, Any]] = None):
+                       cover_url: Optional[str] = None, icon_emoji: Optional[str] = None, properties: Optional[Dict[str, Any]] = None):
+    """
+    Updates a page's metadata (title, icon, cover) and properties.
+    Can also archive (move to trash) the page.
+    """
     if not validate_notion_id(page_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id format"}
+    # ... (function body remains the same) ...
+    # Removed for brevity.
     kwargs = {}
     if archived is not None:
         kwargs["archived"] = archived
@@ -241,6 +226,10 @@ def NOTION_UPDATE_PAGE(page_id: str, title: Optional[str] = None, archived: Opti
 
 @mcp.tool()
 def NOTION_GET_PAGE_PROPERTY_ACTION(page_id: str, property_id: str, page_size: Optional[int] = None, start_cursor: Optional[str] = None):
+    """
+    Retrieves the value of a single page property.
+    Useful for getting a specific field from a database row.
+    """
     if not validate_notion_id(page_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id format"}
     kwargs = {"page_id": page_id, "property_id": property_id}
@@ -253,6 +242,9 @@ def NOTION_GET_PAGE_PROPERTY_ACTION(page_id: str, property_id: str, page_size: O
 
 @mcp.tool()
 def NOTION_ARCHIVE_NOTION_PAGE(page_id: str, archive: bool = True):
+    """
+    Moves a page to the trash (archives it). Can be used to unarchive by setting archive=False.
+    """
     if not validate_notion_id(page_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id format"}
     return safe_execute(lambda **kw: notion.pages.update(**kw), page_id=page_id, archived=archive)
@@ -260,12 +252,18 @@ def NOTION_ARCHIVE_NOTION_PAGE(page_id: str, archive: bool = True):
 
 @mcp.tool()
 def list_pages(keyword: Optional[str] = None):
+    """
+    Searches and lists accessible pages (objects with 'page' type).
+    Results can be filtered by a keyword query.
+    """
     search_kwargs = {"filter": {"property": "object", "value": "page"}}
     if keyword:
         search_kwargs["query"] = keyword
     res = safe_execute(lambda **kw: notion.search(**kw), **search_kwargs)
     if not res["successful"]:
         return res
+    # ... (function body remains the same) ...
+    # Removed for brevity.
     pages = []
     for pg in res["data"].get("results", []):
         title = "Untitled"
@@ -285,6 +283,10 @@ def list_pages(keyword: Optional[str] = None):
 # ---------------- DATABASE TOOLS ----------------
 @mcp.tool()
 def NOTION_CREATE_DATABASE(parent_id: str, title: str, properties: Dict[str, Any]):
+    """
+    Creates a new database under a specific parent page ID.
+    Requires a valid 'properties' dictionary that defines the database schema.
+    """
     if not validate_notion_id(parent_id):
         return {"successful": False, "data": {}, "error": "Invalid parent_id format"}
     # require at least one title prop in properties values
@@ -296,6 +298,10 @@ def NOTION_CREATE_DATABASE(parent_id: str, title: str, properties: Dict[str, Any
 
 @mcp.tool()
 def NOTION_INSERT_ROW_DATABASE(database_id: str, properties: Dict[str, Any], icon: Optional[str] = None, cover: Optional[str] = None, children: Optional[List[Dict[str, Any]]] = None):
+    """
+    Creates a new page (row) inside a specified database ID.
+    Requires a 'properties' dictionary matching the database schema.
+    """
     if not validate_notion_id(database_id):
         return {"successful": False, "data": {}, "error": "Invalid database_id format"}
     payload = {"parent": {"database_id": database_id}, "properties": properties}
@@ -310,6 +316,10 @@ def NOTION_INSERT_ROW_DATABASE(database_id: str, properties: Dict[str, Any], ico
 
 @mcp.tool()
 def NOTION_QUERY_DATABASE(database_id: str, page_size: int = 10, sorts: Optional[List[Dict[str, Any]]] = None, start_cursor: Optional[str] = None):
+    """
+    Queries a database to retrieve a list of pages (rows).
+    Supports sorting, limiting results (page_size), and pagination.
+    """
     if not validate_notion_id(database_id):
         return {"successful": False, "data": {}, "error": "Invalid database_id format"}
     payload = {"page_size": page_size}
@@ -322,6 +332,9 @@ def NOTION_QUERY_DATABASE(database_id: str, page_size: int = 10, sorts: Optional
 
 @mcp.tool()
 def NOTION_FETCH_DATABASE(database_id: str):
+    """
+    Retrieves the full metadata (title, schema properties, parent) of a specific database ID.
+    """
     if not validate_notion_id(database_id):
         return {"successful": False, "data": {}, "error": "Invalid database_id format"}
     return safe_execute(lambda **kw: notion.databases.retrieve(**kw), database_id=database_id)
@@ -329,6 +342,9 @@ def NOTION_FETCH_DATABASE(database_id: str):
 
 @mcp.tool()
 def NOTION_FETCH_ROW(page_id: str):
+    """
+    Retrieves the properties and metadata of a page that is a row in a database.
+    """
     if not validate_notion_id(page_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id format"}
     return safe_execute(lambda **kw: notion.pages.retrieve(**kw), page_id=page_id)
@@ -336,6 +352,10 @@ def NOTION_FETCH_ROW(page_id: str):
 
 @mcp.tool()
 def NOTION_UPDATE_ROW_DATABASE(page_id: str, properties: Optional[Dict[str, Any]] = None, icon: Optional[str] = None, cover: Optional[str] = None, archived: Optional[bool] = False):
+    """
+    Updates the properties of a page (row) within a database.
+    Can also update icon, cover, or archive status.
+    """
     if not validate_notion_id(page_id):
         return {"successful": False, "data": {}, "error": "Invalid page_id format"}
     payload = {}
@@ -352,6 +372,9 @@ def NOTION_UPDATE_ROW_DATABASE(page_id: str, properties: Optional[Dict[str, Any]
 
 @mcp.tool()
 def NOTION_UPDATE_SCHEMA_DATABASE(database_id: str, title: Optional[str] = None, description: Optional[str] = None, properties: Optional[Dict[str, Any]] = None):
+    """
+    Updates the schema (columns/properties), title, or description of an existing database.
+    """
     if not validate_notion_id(database_id):
         return {"successful": False, "data": {}, "error": "Invalid database_id format"}
     payload = {}
@@ -372,6 +395,10 @@ def markdown_to_rich_text(content: str) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 def NOTION_ADD_MULTIPLE_PAGE_CONTENT(parent_block_id: str, content_blocks: List[Dict[str, Any]], after: Optional[str] = None):
+    """
+    Appends a list of content blocks (up to 100) to a page or block ID.
+    The blocks can be appended after a specific block ID.
+    """
     if not validate_notion_id(parent_block_id):
         return {"successful": False, "data": {}, "error": "Invalid parent_block_id"}
     if not isinstance(content_blocks, list) or len(content_blocks) == 0:
@@ -396,6 +423,10 @@ def NOTION_ADD_MULTIPLE_PAGE_CONTENT(parent_block_id: str, content_blocks: List[
 
 @mcp.tool()
 def NOTION_ADD_PAGE_CONTENT(parent_block_id: str, content_block: Dict[str, Any], after: Optional[str] = None):
+    """
+    Appends a single content block to a page or parent block.
+    The block must be a valid Notion block object (e.g., paragraph, heading).
+    """
     if not validate_notion_id(parent_block_id):
         return {"successful": False, "data": {}, "error": "Invalid parent_block_id"}
     if not isinstance(content_block, dict):
@@ -408,6 +439,9 @@ def NOTION_ADD_PAGE_CONTENT(parent_block_id: str, content_block: Dict[str, Any],
 
 @mcp.tool()
 def NOTION_APPEND_BLOCK_CHILDREN(block_id: str, children: List[Dict[str, Any]], after: Optional[str] = None):
+    """
+    Appends a list of children blocks to a parent block ID (up to 100 blocks).
+    """
     if not validate_notion_id(block_id):
         return {"successful": False, "data": {}, "error": "Invalid block_id"}
     if not isinstance(children, list) or len(children) == 0:
@@ -422,10 +456,14 @@ def NOTION_APPEND_BLOCK_CHILDREN(block_id: str, children: List[Dict[str, Any]], 
 
 @mcp.tool()
 def NOTION_UPDATE_BLOCK(block_id: str, block_type: str, content: str, additional_properties: Optional[Dict[str, Any]] = None):
+    """
+    Updates the content of an existing block (e.g., changing paragraph text or to-do status).
+    Content is assumed to be markdown text.
+    """
     if not validate_notion_id(block_id):
         return {"successful": False, "data": {}, "error": "Invalid block_id"}
-    # For text-like blocks we populate the type's rich_text or text key depending on type.
-    # Caller should pass appropriate block_type and additional_properties when needed.
+    # ... (function body remains the same) ...
+    # Removed for brevity.
     block_payload = {}
     # Common mapping for text-based blocks
     if block_type in ("paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item", "numbered_list_item", "quote"):
@@ -448,6 +486,9 @@ def NOTION_UPDATE_BLOCK(block_id: str, block_type: str, content: str, additional
 
 @mcp.tool()
 def NOTION_DELETE_BLOCK(block_id: str):
+    """
+    Moves a block (which can be a page or database) to the trash (archives it).
+    """
     if not validate_notion_id(block_id):
         return {"successful": False, "data": {}, "error": "Invalid block_id"}
     return safe_execute(lambda **kw: notion.blocks.update(**kw), block_id=block_id, archived=True)
@@ -455,6 +496,10 @@ def NOTION_DELETE_BLOCK(block_id: str):
 
 @mcp.tool()
 def NOTION_FETCH_BLOCK_CONTENTS(block_id: str, page_size: Optional[int] = None, start_cursor: Optional[str] = None):
+    """
+    Lists the children blocks contained within a parent block or page ID.
+    Supports pagination.
+    """
     if not validate_notion_id(block_id):
         return {"successful": False, "data": {}, "error": "Invalid block_id"}
     kwargs = {"block_id": block_id}
@@ -467,6 +512,9 @@ def NOTION_FETCH_BLOCK_CONTENTS(block_id: str, page_size: Optional[int] = None, 
 
 @mcp.tool()
 def NOTION_FETCH_BLOCK_METADATA(block_id: str):
+    """
+    Retrieves the metadata for a single block ID (type, parent, archived status, etc.).
+    """
     if not validate_notion_id(block_id):
         return {"successful": False, "data": {}, "error": "Invalid block_id"}
     return safe_execute(lambda **kw: notion.blocks.retrieve(**kw), block_id=block_id)
@@ -474,8 +522,14 @@ def NOTION_FETCH_BLOCK_METADATA(block_id: str):
 
 @mcp.tool()
 def mcp_notion_get_all_ids_from_name(name: str, max_depth: int = 3):
+    """
+    Searches Notion by name and retrieves all related IDs (blocks, comments, rows) for the first match.
+    Performs a shallow, recursive search up to max_depth.
+    """
     if not name or not isinstance(name, str):
         return {"successful": False, "data": {}, "error": "name is required"}
+    # ... (function body remains the same) ...
+    # Removed for brevity.
     res = safe_execute(lambda **kw: notion.search(**kw), query=name)
     if not res["successful"]:
         return res
@@ -517,6 +571,10 @@ def mcp_notion_get_all_ids_from_name(name: str, max_depth: int = 3):
 # ---------------- COMMENT TOOLS ----------------
 @mcp.tool()
 def NOTION_CREATE_COMMENT(comment: Dict[str, Any], discussion_id: Optional[str] = None, parent_page_id: Optional[str] = None):
+    """
+    Creates a new comment on a page or existing discussion thread.
+    Requires either a discussion_id (to reply) or a parent_page_id (to start a new thread).
+    """
     if not discussion_id and not parent_page_id:
         return {"successful": False, "data": {}, "error": "Either discussion_id or parent_page_id must be provided."}
     # Build rich_text payload for comment.create
@@ -531,6 +589,9 @@ def NOTION_CREATE_COMMENT(comment: Dict[str, Any], discussion_id: Optional[str] 
 
 @mcp.tool()
 def NOTION_GET_COMMENT_BY_ID(parent_block_id: str, comment_id: str):
+    """
+    Fetches a specific comment by its ID from a list of comments on a block/page.
+    """
     if not parent_block_id or not comment_id:
         return {"successful": False, "data": {}, "error": "parent_block_id and comment_id are required."}
     # fetch (paginated if needed)
@@ -546,6 +607,10 @@ def NOTION_GET_COMMENT_BY_ID(parent_block_id: str, comment_id: str):
 
 @mcp.tool()
 def NOTION_FETCH_COMMENTS(block_id: str, page_size: Optional[int] = 100, start_cursor: Optional[str] = None):
+    """
+    Lists all comments on a page or under a specific block ID.
+    Supports pagination.
+    """
     if not block_id:
         return {"successful": False, "data": {}, "error": "block_id is required."}
     kwargs = {"block_id": block_id, "page_size": page_size}
@@ -553,7 +618,7 @@ def NOTION_FETCH_COMMENTS(block_id: str, page_size: Optional[int] = 100, start_c
         kwargs["start_cursor"] = start_cursor
     return safe_execute(lambda **kw: notion.comments.list(**kw), **kwargs)
 #--------------------------------------
-           #SEARCH TOOLS
+#SEARCH TOOLS
 #--------------------------------------
 
 @mcp.tool()
@@ -567,8 +632,8 @@ def NOTION_SEARCH_NOTION_PAGE(
     timestamp: Optional[str] = None,
 ):
     """
-    Search Notion pages and databases by title.
-    An empty query returns all accessible items.
+    Searches Notion pages and databases by title.
+    An empty query returns all accessible items. Supports sorting and filtering.
     """
     kwargs = {
         "page_size": page_size,
@@ -593,8 +658,8 @@ def NOTION_FETCH_DATA(
     query: Optional[str] = None,
 ):
     """
-    Fetch Notion items (pages and/or databases).
-    Minimal metadata only.
+    Fetches Notion items (pages and/or databases) based on filters.
+    If no filter is set, defaults to fetching pages.
     """
     kwargs = {"page_size": page_size}
     if query:
@@ -619,4 +684,5 @@ def NOTION_FETCH_DATA(
 if __name__ == "__main__":
     logger.info("Starting Notion MCP server...")
     asyncio.run(mcp.run())
+
 
