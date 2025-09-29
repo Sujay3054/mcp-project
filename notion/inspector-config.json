@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "name": "My Notion Server",
+      "type": "stdio",
+      "config": {
+        "command": "C:\\Users\\sujay\\mcp-project\\notion\\.venv\\Scripts\\python.exe",
+        "args": ["new.py"],
+        "workingDirectory": "C:\\Users\\sujay\\mcp-project\\notion"
+      }
+    }
+  ]
+}
