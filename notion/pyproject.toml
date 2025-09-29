@@ -1,7 +1,7 @@
 [project]
 name = "notion"
 version = "0.1.0"
-description = "Add your description here"
+description = "A production-ready Model Context Protocol (MCP) server providing 29 enterprise-grade tools for comprehensive management and automation of Notion workspaces."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
