@@ -1,0 +1,10 @@
+{
+  "api_credentials": {
+    "notion_token": "YOUR_NOTION_INTEGRATION_TOKEN_HERE",
+    "notion_api_version": "2022-06-28"
+  },
+  "server_settings": {
+    "host": "127.0.0.1",
+    "port": 8001
+  }
+}
